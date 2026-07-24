@@ -23,6 +23,24 @@
 - ✅Workbuddy：①GitHub 仓库 URL 直接导入，②放到本地技能目录
 >业务逻辑、输出格式、判断规则，全平台完全一致，无需修改正文内容
 
+## 🔄 一键更新（获取新版）
+>作者推送新版本后，本地副本**不会自动更新**，需手动同步一次。
+仓库里自带更新脚本，运行后会自动从 GitHub 拉取最新 `SKILL.md` 与 `README.md` 覆盖本地。
+
+**macOS / Linux**（在 skill 文件夹内执行）：
+```bash
+bash update.sh
+```
+或在文件夹里双击 `update.sh`（需允许终端执行）。
+
+**Windows**（在 skill 文件夹内用 PowerShell 执行）：
+```powershell
+powershell -ExecutionPolicy Bypass -File update.ps1
+```
+
+脚本会显示每个文件的旧/新字节数，完成后**重启 WorkBuddy 对话**即可加载新版本。
+若提示「文件异常小」，多为网络受限，请换网络后重试。
+
 ## 🚀 使用示例｜对话输入样例
 >⚠使用前注意：**在当前对话里先说明你的主营产品品类**
 ### 示例对话1（完整提问）

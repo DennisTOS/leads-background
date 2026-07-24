@@ -1,12 +1,18 @@
-# leads-background update script (Windows / PowerShell) with version check
+# leads-background update script (Windows / PowerShell) with version check + quiet mode
 # Compares local vs remote byte size; skips files that are already up to date.
-# Usage:  powershell -ExecutionPolicy Bypass -File update.ps1
+# Usage:
+#   powershell -ExecutionPolicy Bypass -File update.ps1          normal mode
+#   powershell -ExecutionPolicy Bypass -File update.ps1 -q       quiet mode (output only on real update)
 $ErrorActionPreference = "Stop"
 $Repo = "DennisTOS/leads-background"
 $Branch = "main"
 $Base = "https://raw.githubusercontent.com/$Repo/$Branch"
 $Api = "https://api.github.com/repos/$Repo/contents"
 $TargetDir = "$env:USERPROFILE\.workbuddy\skills\leads-background"
+
+$Quiet = $false
+foreach ($a in $args) { if ($a -eq "-q" -or $a -eq "--quiet") { $Quiet = $true } }
+function Info($m) { if (-not $Quiet) { Write-Host $m } }
 
 Write-Host "leads-background update script"
 Write-Host "  repo: $Repo ($Branch)"
@@ -34,7 +40,7 @@ foreach ($f in $files) {
     if (Test-Path $localPath) { $oldSize = (Get-Item $localPath).Length }
     $rsize = RemoteSize $f
     if ($rsize -and ($oldSize -eq [int]$rsize)) {
-        Write-Host "OK: $f already up to date ($oldSize bytes), skipped"
+        Info "OK: $f already up to date ($oldSize bytes), skipped"
         continue
     }
     Write-Host "Downloading $f (local $oldSize -> remote $rsize)..."
@@ -54,7 +60,7 @@ foreach ($f in $files) {
 }
 Write-Host ""
 if (-not $changed) {
-    Write-Host "All files are up to date, nothing to do."
+    Info "All files are up to date, nothing to do."
 } else {
     Write-Host "Done! Restart WorkBuddy to load the new version."
 }

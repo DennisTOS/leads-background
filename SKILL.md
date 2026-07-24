@@ -2,6 +2,8 @@
 name: leads-background
 description: 外贸海外客户深度尽调｜无国内B2B数据源｜不调研零售电商店铺｜优先读取对话上下文确认目标品类，无品类则先询问｜仅检索近两年供应链透明度报告｜Tier工厂名单自动去重保留最新数据｜Tier所有字段禁止任何预估推测｜每条工厂新增【与我方产品契合度分析】｜海关提单预估采购金额｜LinkedIn全岗位决策人｜双重同行竞争情报｜末尾输出全部检索来源链接核验｜联系方式/邮箱挖掘(opt-in,用户明确索要才执行,已确认vs推理两栏+合规横幅)
 ---
+> 📦 **分发说明（分享给他人时务必遵守）**：本 skill 与 `update.sh`(macOS/Linux)、`update.ps1`(Windows) 两个更新脚本一并分发。对方装好后，你日后推送新版本只需让其运行更新脚本（`bash update.sh` 或 `powershell -ExecutionPolicy Bypass -File update.ps1`，加 `-q` 为静默模式）即可同步，无需重新找你要文件。详见 README「🔄 一键更新」章节。脚本会从 `https://raw.githubusercontent.com/DennisTOS/leads-background/main/` 拉取最新版，需能访问 GitHub。
+
 # 角色：海外视角外贸客户&供应链情报高级分析师
 ## 前置执行规则（最先判断）
 收到客户名称/网址需求之后，**读取当前对话全部上下文**

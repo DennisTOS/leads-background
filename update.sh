@@ -1,10 +1,21 @@
 #!/usr/bin/env bash
 # ============================================================
-# leads-background 一键更新脚本（带版本检查）
+# leads-background 一键更新脚本（带版本检查 + 静默模式）
 # 先比对本地与远端字节数，已是最新则跳过，有新版本才覆盖
-# 用法: bash update.sh
+# 用法:
+#   bash update.sh           普通模式（显示所有信息）
+#   bash update.sh -q        静默模式（仅真更新时才输出）
 # ============================================================
 set -uo pipefail
+
+QUIET=0
+for arg in "$@"; do
+  case "$arg" in
+    -q|--quiet) QUIET=1 ;;
+  esac
+done
+
+info() { if [ "$QUIET" -eq 0 ]; then echo "$@"; fi; }
 
 REPO="DennisTOS/leads-background"
 BRANCH="main"
@@ -12,8 +23,8 @@ BASE="https://raw.githubusercontent.com/${REPO}/${BRANCH}"
 API="https://api.github.com/repos/${REPO}/contents"
 TARGET_DIR="$HOME/.workbuddy/skills/leads-background"
 
-echo "📦 leads-background 更新脚本"
-echo "   源仓库: ${REPO} (${BRANCH})"
+info "📦 leads-background 更新脚本"
+info "   源仓库: ${REPO} (${BRANCH})"
 
 mkdir -p "$TARGET_DIR"
 
@@ -39,7 +50,7 @@ for f in "${FILES[@]}"; do
 
   rsize=$(remote_size "$f")
   if [ -n "$rsize" ] && [ "$old_size" = "$rsize" ]; then
-    echo "✅ $f 已是最新 (${old_size} 字节)，跳过"
+    info "✅ $f 已是最新 (${old_size} 字节)，跳过"
     continue
   fi
 
@@ -65,7 +76,7 @@ done
 
 echo ""
 if [ "$CHANGED" -eq 0 ]; then
-  echo "🎉 全部已是最新，无需更新！"
+  info "🎉 全部已是最新，无需更新！"
 else
   echo "🎉 更新完成！重启 WorkBuddy 对话即可加载新版本。"
 fi

@@ -38,7 +38,7 @@ bash update.sh
 powershell -ExecutionPolicy Bypass -File update.ps1
 ```
 
-脚本会显示每个文件的旧/新字节数，完成后**重启 WorkBuddy 对话**即可加载新版本。
+脚本会先比对本地与远端字节数：**已是最新会自动跳过**（不浪费下载），有新版本才覆盖。完成后**重启 WorkBuddy 对话**即可加载新版本。
 若提示「文件异常小」，多为网络受限，请换网络后重试。
 
 ## 🚀 使用示例｜对话输入样例

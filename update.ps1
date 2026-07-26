@@ -1,5 +1,6 @@
 # leads-background update script (Windows / PowerShell) with version check + quiet mode
 # Compares local vs remote byte size; skips files that are already up to date.
+# Primary source (raw.githubusercontent.com) fails -> auto fallback to GitHub Proxy mirrors.
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File update.ps1          normal mode
 #   powershell -ExecutionPolicy Bypass -File update.ps1 -q       quiet mode (output only on real update)
@@ -9,6 +10,9 @@ $Branch = "main"
 $Base = "https://raw.githubusercontent.com/$Repo/$Branch"
 $Api = "https://api.github.com/repos/$Repo/contents"
 $TargetDir = "$env:USERPROFILE\.workbuddy\skills\leads-background"
+
+# candidate sources: primary + GitHub Proxy mirrors (fallback in order)
+$CandidateBases = @($Base, "https://ghproxy.com/$Base", "https://ghproxy.net/$Base", "https://mirror.ghproxy.com/$Base")
 
 $Quiet = $false
 foreach ($a in $args) { if ($a -eq "-q" -or $a -eq "--quiet") { $Quiet = $true } }
@@ -44,10 +48,16 @@ foreach ($f in $files) {
         continue
     }
     Write-Host "Downloading $f (local $oldSize -> remote $rsize)..."
-    try {
-        Invoke-WebRequest -Uri "$Base/$f" -OutFile $localPath -UseBasicParsing
-    } catch {
-        Write-Host "ERROR: failed to download $f - $_" -ForegroundColor Red
+    $dlOk = $false
+    foreach ($cb in $CandidateBases) {
+        try {
+            Invoke-WebRequest -Uri "$cb/$f" -OutFile $localPath -UseBasicParsing -ErrorAction Stop
+            $dlOk = $true
+            break
+        } catch {}
+    }
+    if (-not $dlOk) {
+        Write-Host "ERROR: all sources (incl. GitHub Proxy mirrors) failed to download $f" -ForegroundColor Red
         exit 1
     }
     $newSize = (Get-Item $localPath).Length

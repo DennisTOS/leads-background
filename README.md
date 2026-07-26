@@ -39,7 +39,7 @@ powershell -ExecutionPolicy Bypass -File update.ps1
 ```
 
 脚本会先比对本地与远端字节数：**已是最新会自动跳过**（不浪费下载），有新版本才覆盖。完成后**重启 WorkBuddy 对话**即可加载新版本。
-若提示「文件异常小」，多为网络受限，请换网络后重试。
+若提示「文件异常小」，多为网络受限。脚本已内置 **GitHub Proxy 镜像自动回退**（ghproxy.com / ghproxy.net / mirror.ghproxy.com），主源 `raw.githubusercontent.com` 不可达时会自动切换镜像；若镜像也不可达，请换网络后重试。
 
 ## 🚀 使用示例｜对话输入样例
 >⚠使用前注意：**在当前对话里先说明你的主营产品品类**

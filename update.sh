@@ -2,6 +2,7 @@
 # ============================================================
 # leads-background 一键更新脚本（带版本检查 + 静默模式）
 # 先比对本地与远端字节数，已是最新则跳过，有新版本才覆盖
+# 主源（raw.githubusercontent.com）失败时自动回退多个 GitHub Proxy 镜像
 # 用法:
 #   bash update.sh           普通模式（显示所有信息）
 #   bash update.sh -q        静默模式（仅真更新时才输出）
@@ -22,6 +23,9 @@ BRANCH="main"
 BASE="https://raw.githubusercontent.com/${REPO}/${BRANCH}"
 API="https://api.github.com/repos/${REPO}/contents"
 TARGET_DIR="$HOME/.workbuddy/skills/leads-background"
+
+# 下载候选源：主源 + 多个 GitHub Proxy 镜像（主源失败时依次回退）
+CANDIDATE_BASES=("$BASE" "https://ghproxy.com/${BASE}" "https://ghproxy.net/${BASE}" "https://mirror.ghproxy.com/${BASE}")
 
 info "📦 leads-background 更新脚本"
 info "   源仓库: ${REPO} (${BRANCH})"
@@ -56,12 +60,19 @@ for f in "${FILES[@]}"; do
 
   echo ""
   echo "⬇️  更新 $f (本地 ${old_size} → 远端 ${rsize:-未知} 字节)..."
-  if command -v curl >/dev/null 2>&1; then
-    curl -fsSL --http1.1 -o "$local_path" "${BASE}/${f}"
-  elif command -v wget >/dev/null 2>&1; then
-    wget -q -O "$local_path" "${BASE}/${f}"
-  else
-    echo "❌ 未找到 curl 或 wget，无法下载" >&2
+  dl_ok=0
+  for cb in "${CANDIDATE_BASES[@]}"; do
+    if command -v curl >/dev/null 2>&1; then
+      if curl -fsSL --http1.1 -o "$local_path" "${cb}/${f}" 2>/dev/null; then dl_ok=1; break; fi
+    elif command -v wget >/dev/null 2>&1; then
+      if wget -q -O "$local_path" "${cb}/${f}" 2>/dev/null; then dl_ok=1; break; fi
+    else
+      echo "❌ 未找到 curl 或 wget，无法下载" >&2
+      exit 1
+    fi
+  done
+  if [ "$dl_ok" -ne 1 ]; then
+    echo "❌ 所有源（含 GitHub Proxy 镜像）均下载失败，请检查网络后重试" >&2
     exit 1
   fi
 

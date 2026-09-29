@@ -22,6 +22,7 @@
 - ✅OpenAI Codex CLI：原生兼容SKILL.md文件
 - ✅Workbuddy：①GitHub 仓库 URL 直接导入，②放到本地技能目录
 >业务逻辑、输出格式、判断规则，全平台完全一致，无需修改正文内容
+- ⚠️ **Codex CLI 用户请注意两项**：① 需在技能目录放置 `SKILL.md`（`~/.codex/skills/leads-background/SKILL.md`），必要时用 `codex --enable skills` 开启技能发现；② Codex 默认联网检索为**缓存索引模式**（非实时页面），海关提单 / ESG / LinkedIn 等实时数据建议用 `codex --search` 启动，或在 config.toml 设 `web_search = "live"`；若设为 `"disabled"` 本 Skill 会直接提示无法执行（避免产出空报告）。
 
 ## 🔄 一键更新（获取新版）
 >作者推送新版本后，本地副本**不会自动更新**，需手动同步一次。
@@ -38,7 +39,7 @@ bash update.sh
 powershell -ExecutionPolicy Bypass -File update.ps1
 ```
 
-脚本会先比对本地与远端字节数：**已是最新会自动跳过**（不浪费下载），有新版本才覆盖。完成后**重启 WorkBuddy 对话**即可加载新版本。
+脚本会先比对本地与远端版本：字节数一致时再做**内容比对**，内容一致才自动跳过（不浪费下载），有新版本才覆盖。注意：**云端仓库为唯一权威源**，本地对 skill 的自行改动会在更新时被远端版本覆盖。完成后**重启 WorkBuddy 对话**即可加载新版本。
 若提示「文件异常小」，多为网络受限。脚本已内置 **GitHub Proxy 镜像自动回退**（ghproxy.com / ghproxy.net / mirror.ghproxy.com），主源 `raw.githubusercontent.com` 不可达时会自动切换镜像；若镜像也不可达，请换网络后重试。
 
 ## 🚀 使用示例｜对话输入样例

@@ -1,5 +1,6 @@
 # leads-background update script (Windows / PowerShell) with version check, quiet mode, multi-Agent support
-# Compares local vs remote byte size; skips files that are already up to date.
+# Compares local vs remote byte size; when sizes match it also verifies content hashes
+# (guards against same-length-different-content; cloud repo is the authoritative source).
 # Primary source (raw.githubusercontent.com) fails -> auto fallback to GitHub Proxy mirrors.
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File update.ps1            update all installed Agents
@@ -84,7 +85,30 @@ foreach ($target in $Targets) {
         $oldSize = 0
         if (Test-Path $localPath) { $oldSize = (Get-Item $localPath).Length }
         $rsize = RemoteSize $f
-        if ($rsize -and ($oldSize -eq [int]$rsize)) {
+        if ($rsize -and ($oldSize -eq [int]$rsize) -and (Test-Path $localPath)) {
+            # Sizes match: verify content hashes too (same length may still differ; cloud is authoritative)
+            $tmpFile = [System.IO.Path]::GetTempFileName()
+            $tmpOk = $false
+            foreach ($cb in $CandidateBases) {
+                try {
+                    Invoke-WebRequest -Uri "$cb/$f" -OutFile $tmpFile -UseBasicParsing -ErrorAction Stop
+                    $tmpOk = $true
+                    break
+                } catch {}
+            }
+            if ($tmpOk -and ((Get-Item $tmpFile).Length -ge 100)) {
+                if ((Get-FileHash $tmpFile).Hash -eq (Get-FileHash $localPath).Hash) {
+                    Remove-Item $tmpFile -Force -ErrorAction SilentlyContinue
+                    Info "  OK: $f already up to date ($oldSize bytes), skipped"
+                    continue
+                }
+                Move-Item -Force $tmpFile $localPath
+                Write-Host "  SYNC: $f same byte size but content differs, updated from remote (cloud is authoritative)"
+                $changed = $true
+                continue
+            }
+            Remove-Item $tmpFile -Force -ErrorAction SilentlyContinue
+            # Content check unavailable (download failed): treat same size as up to date
             Info "  OK: $f already up to date ($oldSize bytes), skipped"
             continue
         }

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================
 # leads-background 一键更新脚本（带版本检查 + 静默模式 + 多 Agent 支持）
-# 先比对本地与远端字节数，已是最新则跳过，有新版本才覆盖
+# 先比对本地与远端字节数，一致时再做内容比对（防"内容变了但长度恰好相同"误判）；
+# 内容一致才跳过，有差异即覆盖（云端为权威源，本地改动会被远端覆盖）
 # 主源（raw.githubusercontent.com）失败时自动回退多个 GitHub Proxy 镜像
 # 用法:
 #   bash update.sh                    更新所有已安装 Agent 的 skill 目录
@@ -122,7 +123,23 @@ remote_size() {
 
 FILES=(SKILL.md README.md update.sh update.ps1)
 
-# 更新单个目录，返回该目录是否有文件变更（0=无变更 1=有变更）
+# 下载文件到指定路径：依次尝试主源+镜像，成功返回 0；无 curl/wget 返回 2；全失败返回 1
+download_file() {
+  local dest="$1" f="$2" cb
+  for cb in "${CANDIDATE_BASES[@]}"; do
+    if command -v curl >/dev/null 2>&1; then
+      if curl -fsSL --http1.1 $CURL_EXTRA -o "$dest" "${cb}/${f}" 2>/dev/null; then return 0; fi
+    elif command -v wget >/dev/null 2>&1; then
+      if wget -q -O "$dest" "${cb}/${f}" 2>/dev/null; then return 0; fi
+    else
+      echo "  ❌ 未找到 curl 或 wget，无法下载" >&2
+      return 2
+    fi
+  done
+  return 1
+}
+
+# 更新单个目录，返回该目录是否有文件变更（0=无变更 1=有变更 2=致命错误）
 update_dir() {
   local TARGET_DIR="$1"
   local changed=0
@@ -137,24 +154,31 @@ update_dir() {
 
     local rsize
     rsize=$(remote_size "$f")
-    if [ -n "$rsize" ] && [ "$old_size" = "$rsize" ]; then
+    if [ -n "$rsize" ] && [ "$old_size" = "$rsize" ] && [ -f "$local_path" ]; then
+      # 字节数一致时仍需校验内容（防"内容变了但长度恰好相同"误判跳过；云端为权威源，本地改动会被远端覆盖）
+      local tmp_f
+      tmp_f=$(mktemp 2>/dev/null) || tmp_f=""
+      if [ -n "$tmp_f" ] && download_file "$tmp_f" "$f" && cmp -s "$tmp_f" "$local_path"; then
+        rm -f "$tmp_f"
+        info "  ✅ $f 已是最新 (${old_size} 字节)，跳过"
+        continue
+      fi
+      if [ -n "$tmp_f" ] && [ -s "$tmp_f" ] && [ "$(wc -c < "$tmp_f" | tr -d ' ')" -ge 100 ]; then
+        mv -f "$tmp_f" "$local_path"
+        echo "  🔄 $f 字节数相同但内容有差异，已按远端更新（云端为权威源）"
+        changed=1
+        continue
+      fi
+      [ -n "$tmp_f" ] && rm -f "$tmp_f"
+      # 内容比对失败（临时文件/下载均不可用），字节数一致视为最新
       info "  ✅ $f 已是最新 (${old_size} 字节)，跳过"
       continue
     fi
 
     echo "  ⬇️  更新 $f (本地 ${old_size} → 远端 ${rsize:-未知} 字节)..."
-    local dl_ok=0
-    for cb in "${CANDIDATE_BASES[@]}"; do
-      if command -v curl >/dev/null 2>&1; then
-        if curl -fsSL --http1.1 $CURL_EXTRA -o "$local_path" "${cb}/${f}" 2>/dev/null; then dl_ok=1; break; fi
-      elif command -v wget >/dev/null 2>&1; then
-        if wget -q -O "$local_path" "${cb}/${f}" 2>/dev/null; then dl_ok=1; break; fi
-      else
-        echo "  ❌ 未找到 curl 或 wget，无法下载" >&2
-        return 2
-      fi
-    done
-    if [ "$dl_ok" -ne 1 ]; then
+    download_file "$local_path" "$f"
+    local dl_rc=$?
+    if [ "$dl_rc" -ne 0 ]; then
       echo "  ❌ 所有源（含 GitHub Proxy 镜像）均下载失败，请检查网络后重试" >&2
       return 2
     fi
@@ -171,9 +195,9 @@ update_dir() {
 
   if [ "$changed" -eq 1 ]; then
     echo "📍 $TARGET_DIR 已更新，重启对应 Agent 对话即可加载新版本。"
-  else
-    info "📍 $TARGET_DIR 全部已是最新。"
+    return 1
   fi
+  info "📍 $TARGET_DIR 全部已是最新。"
   return 0
 }
 
